@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -25,6 +26,7 @@ const tgBotApiUrl string = "https://api.telegram.org/bot"
 var tgBotApiToken string = os.Getenv("TGBOT_TOKEN")
 
 func main(){
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	var offset int
 	if gCloadApiToken == "" || tgBotApiToken == "" {
 		log.Fatalf("Set GCLOUD_TOKEN and TGBOT_TOKEN env variables")
@@ -227,6 +229,7 @@ func getTelegramUpdates (offset int) ([]Update, error) {
 
 func botReply(message BotMessage) error {
 	log.Println("Telegram BOT reply")
+	go blink()
 	var endpoint string = "/sendMessage"
 	jsonValue, _ := json.Marshal(message)
 
@@ -276,4 +279,21 @@ func postRequest(url string, body io.Reader) error {
 		return nil
 	}
 	return err
+}
+
+func blink() {
+	ledSwitch("default-on")
+	time.Sleep(time.Second / 4)
+	ledSwitch("none")
+}
+
+func ledSwitch(line string) {
+	// LED on = default-on
+	// LED off = none
+	in, e := os.Create("/sys/devices/platform/gpio-leds/leds/F@ST2704N:red:inet/trigger")
+	if e != nil {
+		log.Println(e)
+	}
+	fmt.Fprint(in, line)
+	defer in.Close()
 }
