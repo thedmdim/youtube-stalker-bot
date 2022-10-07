@@ -16,6 +16,7 @@ import (
 )
 
 var requestMaxTries int = 10
+var requestDelayOnFail int = 5
 var views int = 200
 
 var gCloadApi string = os.Getenv("GCLOUD_TOKEN")
@@ -42,27 +43,31 @@ func main(){
 }
 
 func processUpdate(update Update){
-	var message BotMessage
+	message := BotMessage{}
+	message.ChatId = update.Message.Chat.ChatId
 	if update.Message.Text == "/start" {
-		message = BotMessage{
-			ChatId: update.Message.Chat.ChatId,
-			Text: "Получить случайные видео\nTo get random video\n/random",
-		}
+		message.Text = "Чтобы получить случайные видео, нажми /random"
 		botReply(message)
 	}
 
 	if update.Message.Text == "/random" {
-		videos := findRandomVideos()
-		message = BotMessage{
-			ChatId: update.Message.Chat.ChatId,
-			Text: fmt.Sprintf("Randomly found %d", len(videos)),
+		message.Text = "Начинаю рандомить 🎲"
+		botReply(message)
+
+		videos, err := findRandomVideos()
+		if err != nil {
+			message.Text = "У меня кончились запросы к ютуб апи, попробуй попозже 😴"
+			botReply(message)
+			return
 		}
+		message.Text = fmt.Sprintf("Найдено %d самых случайных видео", len(videos))
 		botReply(message)
 		time.Sleep(time.Second * 2)
-		for _, v := range videos{
+		
+		for _, v := range videos {
 			message = BotMessage{
 				ChatId: update.Message.Chat.ChatId,
-				Text: fmt.Sprintf("Title: %s\nViews: %d\nLink: https://www.youtube.com/watch?v=%s", v.Title, v.Views, v.Id),
+				Text: fmt.Sprintf("title: %s\nviews: %d\nlink: https://www.youtube.com/watch?v=%s", v.Title, v.Views, v.Id),
 			}
 			botReply(message)
 			time.Sleep(time.Second)
@@ -70,29 +75,32 @@ func processUpdate(update Update){
 	}
 }
 
+func findRandomVideos() (map[string]*Video, error) {
+	var (
+		id string
+		err error
+	)
+	results := make(map[string]*Video)
 
-func findRandomVideos() map[string]*Video {
 	for try:=1;;try++{
-		log.Printf("Find random video try number %d", try)
-
-		id := randomYtId()
+		id = randomYtId()
 
 		log.Printf("Search id %s with CSE", id)
-		results, err := searchId(id)
+
+		err = searchId(results, id)
 		if err != nil {
-			log.Println(err)
-			continue
+			return nil, err
 		}
 		
 		log.Printf("Found %d videos", len(results))
 		if len(results) == 0 {
 			continue
 		}
+
 		log.Printf("Populating views")
 		err = getViews(results)
 		if err != nil {
-			log.Println(err)
-			continue
+			return nil, err
 		}
 
 		log.Printf("Filter videos with less than %d views", views)
@@ -102,10 +110,10 @@ func findRandomVideos() map[string]*Video {
 			}
 		}
 		
-		log.Printf("Videos after filtering %d", len(results) > 0)
+		log.Printf("Videos after filtering %d", len(results))
 		if len(results) > 0 {
-			return results
-		}		
+			return results, nil
+		}	
 	}
 }
 
@@ -124,31 +132,26 @@ func randomYtId() string {
 }
 
 
-func searchId(id string) (map[string]*Video, error) {
-	log.Println("Searching video id")
-
+func searchId(results map[string]*Video, id string) error {
 	urlQuery := fmt.Sprintf("https://www.googleapis.com/customsearch/v1?key=%s&cx=%s&q=inurl%%3A%s", gCloadApi, cseId, id)
 	resp, err := getRequest(urlQuery)
 	if err != nil {
-		log.Printf("searchId %e", err)
-		return nil, err
+		return err
 	}
+	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Println(err)
-		return nil, err
+		return err
 	}
 
 	var r gSearchResponse
 	err = json.Unmarshal(body, &r)
 	if err != nil {
-		log.Println(err)
-		return nil, err
+		return err
 	}
 	log.Printf("Found %s results", r.SearchInformation.TotalResults)
 
-	result := make(map[string]*Video)
 	for _, item := range r.Items {
 		video := new(Video)
 		
@@ -157,15 +160,13 @@ func searchId(id string) (map[string]*Video, error) {
 		video.UploadDate = item.Pagemap.VideoObject[0].UploadDate
 		video.Title = item.Pagemap.VideoObject[0].Title
 
-		result[item.Pagemap.VideoObject[0].VideoId] = video
+		results[item.Pagemap.VideoObject[0].VideoId] = video
 	}
-	return result, nil
+	return nil
 }
 
 
 func getViews(videos map[string]*Video) error {
-	log.Println("Getting views")
-
 	var ids string
 	for _, video := range videos {
 		ids += video.Id + ","
@@ -177,6 +178,7 @@ func getViews(videos map[string]*Video) error {
 		log.Printf("getViews: %e", err)
 		return err
 	}
+	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -227,6 +229,7 @@ func botReply(message BotMessage) error {
 	log.Println("Telegram BOT reply")
 	var endpoint string = "/sendMessage"
 	jsonValue, _ := json.Marshal(message)
+
 	err := postRequest(tgBotApiUrl + tgBotApiToken + endpoint, bytes.NewBuffer(jsonValue))
 	if err != nil {
 		return err
@@ -241,20 +244,18 @@ func getRequest(url string) (*http.Response, error) {
 		err error
 	)
 	for i:=0; i<requestMaxTries; i++ {
-		log.Printf("GET %s try %d", url, i)
 		resp, err = http.Get(url)
-		defer resp.Body.Close()
 		if resp.StatusCode != 200 {
 			err = errors.New(fmt.Sprintf("GET %s %d", url, resp.StatusCode))
-			continue
 		}
 		if err != nil {
-			log.Printf("Error occured: %e, try: %d", err, i)
-			time.Sleep(time.Second * time.Duration(requestMaxTries))
+			log.Printf("Error occured: %s, try: %d", err, i)
+			time.Sleep(time.Second * 10)
 			continue
 		}
+		return resp, nil
 	}
-	return resp, err
+	return nil, err
 }
 
 func postRequest(url string, body io.Reader) error {
@@ -263,17 +264,16 @@ func postRequest(url string, body io.Reader) error {
 		err error
 	)
 	for i:=0; i<requestMaxTries; i++ {
-		log.Printf("POST %s try %d", url, i)
 		resp, err = http.Post(url, "application/json", body)
 		if resp.StatusCode != 200 {
 			err = errors.New(fmt.Sprintf("POST %s %d", url, resp.StatusCode))
-			continue
 		}
 		if err != nil {
-			log.Printf("Error occured: %e, try: %d", err, i)
-			time.Sleep(time.Second * time.Duration(requestMaxTries))
+			log.Printf("Error occured: %s, try: %d", err, i)
+			time.Sleep(time.Second * time.Duration(requestDelayOnFail))
 			continue
 		}
+		return nil
 	}
 	return err
 }
