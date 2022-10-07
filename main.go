@@ -18,15 +18,15 @@ var requestMaxTries int = 10
 var requestDelayOnFail int = 5
 var views int = 200
 
-var gCloadApi string = os.Getenv("GCLOUD_TOKEN")
-const cseId string = "41646304e52844d02"
+const gCloadApiUrl string = "https://www.googleapis.com/youtube/v3"
+var gCloadApiToken string = os.Getenv("GCLOUD_TOKEN")
 
 const tgBotApiUrl string = "https://api.telegram.org/bot"
 var tgBotApiToken string = os.Getenv("TGBOT_TOKEN")
 
 func main(){
 	var offset int
-	if gCloadApi == "" || tgBotApiToken == "" {
+	if gCloadApiToken == "" || tgBotApiToken == "" {
 		log.Fatalf("Set GCLOUD_TOKEN and TGBOT_TOKEN env variables")
 	}
 	for ;; {
@@ -130,10 +130,10 @@ func randomYtId() string {
 	return id
 }
 
-
 func searchId(results map[string]*Video, id string) error {
-	urlQuery := fmt.Sprintf("https://www.googleapis.com/customsearch/v1?key=%s&cx=%s&q=inurl%%3A%s", gCloadApi, cseId, id)
-	resp, err := getRequest(urlQuery)
+	var endpoint string = "/search"
+	var params string = "?part=snippet&maxResults=50&type=video&key=" + gCloadApiToken + "&q=inurl%3A" + id
+	resp, err := getRequest(gCloadApiUrl + endpoint + params)
 	if err != nil {
 		return err
 	}
@@ -144,22 +144,21 @@ func searchId(results map[string]*Video, id string) error {
 		return err
 	}
 
-	var r gSearchResponse
+	var r ytSearchResponse
 	err = json.Unmarshal(body, &r)
 	if err != nil {
 		return err
 	}
-	log.Printf("Found %s results", r.SearchInformation.TotalResults)
+	log.Printf("Found %d results", r.PageInfo.TotalResults)
 
 	for _, item := range r.Items {
 		video := new(Video)
 		
-		video.Id = item.Pagemap.VideoObject[0].VideoId
-		video.Link =  item.Link
-		video.UploadDate = item.Pagemap.VideoObject[0].UploadDate
-		video.Title = item.Pagemap.VideoObject[0].Title
+		video.Id = item.Id.VideoId
+		video.UploadDate = item.Snippet.PublishedAt
+		video.Title = item.Snippet.Title
 
-		results[item.Pagemap.VideoObject[0].VideoId] = video
+		results[video.Id] = video
 	}
 	return nil
 }
@@ -167,12 +166,14 @@ func searchId(results map[string]*Video, id string) error {
 
 func getViews(videos map[string]*Video) error {
 	var ids string
+	
 	for _, video := range videos {
 		ids += video.Id + ","
 	}
-	urlQuery := fmt.Sprintf("https://www.googleapis.com/youtube/v3/videos?key=%s&part=statistics,contentDetails,snippet&id=%s", gCloadApi, ids)
 
-	resp, err := getRequest(urlQuery)
+	var endpoint string = "/videos"
+	var params string = "?part=statistics&key=" + gCloadApiToken + "&id=" + ids 
+	resp, err := getRequest(gCloadApiUrl + endpoint + params)
 	if err != nil {
 		log.Printf("getViews: %e", err)
 		return err
@@ -184,7 +185,7 @@ func getViews(videos map[string]*Video) error {
 		return err
 	}
 
-	var r ytResponse
+	var r ytListResponse
 	err = json.Unmarshal(body, &r)
 	if err != nil {
 		log.Println(err)
