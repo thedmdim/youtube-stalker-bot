@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -246,7 +245,7 @@ func getRequest(url string) (*http.Response, error) {
 	for i:=0; i<requestMaxTries; i++ {
 		resp, err = http.Get(url)
 		if resp.StatusCode != 200 {
-			err = errors.New(fmt.Sprintf("GET %s %d", url, resp.StatusCode))
+			err = fmt.Errorf("POST %s %d", url, resp.StatusCode)
 		}
 		if err != nil {
 			log.Printf("Error occured: %s, try: %d", err, i)
@@ -266,7 +265,7 @@ func postRequest(url string, body io.Reader) error {
 	for i:=0; i<requestMaxTries; i++ {
 		resp, err = http.Post(url, "application/json", body)
 		if resp.StatusCode != 200 {
-			err = errors.New(fmt.Sprintf("POST %s %d", url, resp.StatusCode))
+			err = fmt.Errorf("POST %s %d", url, resp.StatusCode)
 		}
 		if err != nil {
 			log.Printf("Error occured: %s, try: %d", err, i)
