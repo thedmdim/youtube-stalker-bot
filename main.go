@@ -120,12 +120,12 @@ func findRandomVideos() (map[string]*Video, error) {
 
 // get random youtube video id
 func randomYtId() string {
-	const ytbase64range string = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_"
+	const ytbase64range string = "0123456789abcdefghijklmnopqrstuvwxyz-_"
 	var id string		
 	
 	rand.Seed(time.Now().UnixNano())	
 	for i:=0; i<5; i++ {
-		id+=string(ytbase64range[rand.Intn(63)])
+		id+=string(ytbase64range[rand.Intn(37)])
 	}
 
 	log.Printf("Randomly generated id part %s", id)
