@@ -1,7 +1,7 @@
 # Youtube Stalker Bot
 
 ## Что делает?
-Ищет случайные видео на youtube.com [youtube.com](https://www.youtube.com/)
+Ищет случайные видео на [youtube.com](https://www.youtube.com/)
 
 ## Как?
 Видео на YouTube имеет идентификатор из 11 символов base64, который передётся после знака вопроса в параметре `v`
