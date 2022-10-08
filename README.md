@@ -21,4 +21,18 @@
 
 В ветке [F@ST2704N](https://github.com/thedmdim/youtube-stalker-bot/tree/F%40ST2704N) представлен код, который запущен на моём [старом роутере](https://openwrt.org/toh/hwdata/sagem/sagem_fast2704n_v1) Sagecom.
 
+Чтобы запустить самому надо сделать:
+1. `git clone https://github.com/thedmdim/youtube-stalker-bot`
+2. `cd youtube-stalker-bot`
+3. `go build .`
+4. Включить Youtube API и получить токен [Google Cloud](https://console.cloud.google.com/apis/api/youtube.googleapis.com)
+5. Создать бота и получить токен в Телеграме https://t.me/BotFather
+6. Установить переменные окружения
+   - Для **Windows**
+     1. `set GCLOUD_TOKEN=<Google Cloud Token>`
+     2. `set TGBOT_TOKEN=<Telegram Bot Token>`
+   - Для **Linux**
+     1. `export GCLOUD_TOKEN=<Google Cloud Token>`
+     2. `export TGBOT_TOKEN=<Telegram Bot Token>`
+7. Запустить: `./youtube-stalker-bot` если вы на Linux или `youtube-stalker-bot.exe` если вы на Windows
 
