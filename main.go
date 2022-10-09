@@ -86,7 +86,7 @@ func findRandomVideos() (map[string]*Video, error) {
 	for try:=1;;try++{
 		id = randomYtId()
 
-		log.Printf("Search id %s with CSE", id)
+		log.Printf("Randomly generated id part %s", id)
 
 		err = searchId(results, id)
 		if err != nil {
@@ -121,15 +121,14 @@ func findRandomVideos() (map[string]*Video, error) {
 // get random youtube video id
 func randomYtId() string {
 	const ytbase64range string = "0123456789abcdefghijklmnopqrstuvwxyz-_"
-	var id string		
+	var id []byte		
 	
 	rand.Seed(time.Now().UnixNano())	
 	for i:=0; i<5; i++ {
-		id+=string(ytbase64range[rand.Intn(37)])
+		id = append(id, ytbase64range[rand.Intn(37)])
 	}
 
-	log.Printf("Randomly generated id part %s", id)
-	return id
+	return string(id)
 }
 
 func searchId(results map[string]*Video, id string) error {
@@ -229,7 +228,7 @@ func getTelegramUpdates (offset int) ([]Update, error) {
 
 func botReply(message BotMessage) error {
 	log.Println("Telegram BOT reply")
-	go blink()
+	blink()
 	var endpoint string = "/sendMessage"
 	jsonValue, _ := json.Marshal(message)
 
