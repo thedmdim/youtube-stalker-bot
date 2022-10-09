@@ -20,7 +20,7 @@ import (
 var requestMaxTries int = 10
 var requestDelayOnFail int = 5
 var views int = 200
-var stats map[int]int
+var stats = make(map[int]int)
 
 
 const gCloadApiUrl string = "https://www.googleapis.com/youtube/v3"
