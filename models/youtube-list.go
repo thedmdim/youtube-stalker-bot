@@ -1,6 +1,6 @@
-package main
+package models
 
-type ytListResponse struct {
+type YtListResponse struct {
 	Items []ytLisItem `json:"items"`
 }
 

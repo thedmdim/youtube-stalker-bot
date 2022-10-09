@@ -1,9 +1,11 @@
 package main
 
 import (
+	. "youtube-stalker-bot/models"
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -18,6 +20,8 @@ import (
 var requestMaxTries int = 10
 var requestDelayOnFail int = 5
 var views int = 200
+var stats map[int]int
+
 
 const gCloadApiUrl string = "https://www.googleapis.com/youtube/v3"
 var gCloadApiToken string = os.Getenv("GCLOUD_TOKEN")
@@ -52,13 +56,25 @@ func processUpdate(update Update){
 	}
 
 	if update.Message.Text == "/random" {
+
+		day := time.Now().Day()
+		stats[day]+=1
+		delete(stats, day-3)
+		
 		message.Text = "Начинаю рандомить 🎲"
 		botReply(message)
 
 		videos, err := findRandomVideos()
+		
 		if err != nil {
-			message.Text = "У меня кончились запросы к ютуб апи, попробуй попозже 😴"
-			botReply(message)
+			switch {
+			case errors.Is(err, ErrorApiQuotaExceeded):
+				log.Println(err)
+				message.Text = "У меня кончились запросы к ютуб апи, попробуй попозже 😴"
+				botReply(message)
+			default:
+				log.Println(err)
+			}
 			return
 		}
 		message.Text = fmt.Sprintf("Найдено %d самых случайных видео", len(videos))
@@ -73,6 +89,12 @@ func processUpdate(update Update){
 			botReply(message)
 			time.Sleep(time.Second)
 		}
+	}
+
+	if update.Message.Text == "/stats" {
+		day := time.Now().Day()
+		message.Text = fmt.Sprintf("Нажали /random\nПозавчера: %d\nВчера: %d\nСегодня: %d", stats[day], stats[day-1], stats[day-2])
+		botReply(message)
 	}
 }
 
@@ -118,7 +140,6 @@ func findRandomVideos() (map[string]*Video, error) {
 	}
 }
 
-// get random youtube video id
 func randomYtId() string {
 	const ytbase64range string = "0123456789abcdefghijklmnopqrstuvwxyz-_"
 	var id []byte		
@@ -145,7 +166,7 @@ func searchId(results map[string]*Video, id string) error {
 		return err
 	}
 
-	var r ytSearchResponse
+	var r YtSearchResponse
 	err = json.Unmarshal(body, &r)
 	if err != nil {
 		return err
@@ -163,7 +184,6 @@ func searchId(results map[string]*Video, id string) error {
 	}
 	return nil
 }
-
 
 func getViews(videos map[string]*Video) error {
 	var ids string
@@ -186,7 +206,7 @@ func getViews(videos map[string]*Video) error {
 		return err
 	}
 
-	var r ytListResponse
+	var r YtListResponse
 	err = json.Unmarshal(body, &r)
 	if err != nil {
 		log.Println(err)
@@ -228,17 +248,21 @@ func getTelegramUpdates (offset int) ([]Update, error) {
 
 func botReply(message BotMessage) error {
 	log.Println("Telegram BOT reply")
-	blink()
 	var endpoint string = "/sendMessage"
 	jsonValue, _ := json.Marshal(message)
 
+	ledSwitch("default-on")
 	err := postRequest(tgBotApiUrl + tgBotApiToken + endpoint, bytes.NewBuffer(jsonValue))
 	if err != nil {
 		return err
 	}
+	ledSwitch("none")
+
 	return nil
 	
 }
+
+var ErrorApiQuotaExceeded = errors.New("YouTube API quota exceeded")
 
 func getRequest(url string) (*http.Response, error) {
 	var (
@@ -247,6 +271,9 @@ func getRequest(url string) (*http.Response, error) {
 	)
 	for i:=0; i<requestMaxTries; i++ {
 		resp, err = http.Get(url)
+		if resp.StatusCode == 429 {
+			return resp, ErrorApiQuotaExceeded
+		}
 		if resp.StatusCode != 200 {
 			err = fmt.Errorf("POST %s %d", url, resp.StatusCode)
 		}
@@ -278,12 +305,6 @@ func postRequest(url string, body io.Reader) error {
 		return nil
 	}
 	return err
-}
-
-func blink() {
-	ledSwitch("default-on")
-	time.Sleep(time.Second / 4)
-	ledSwitch("none")
 }
 
 func ledSwitch(line string) {
