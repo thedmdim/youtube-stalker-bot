@@ -1,4 +1,4 @@
-package models
+package youtube
 
 type YtSearchResponse struct {
 	Items []ytSearchItem `json:"items"`
