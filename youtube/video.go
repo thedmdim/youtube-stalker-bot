@@ -1,4 +1,4 @@
-package main
+package youtube
 
 type Video struct {
 	Id string

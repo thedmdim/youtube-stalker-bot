@@ -1,6 +1,6 @@
-package main
+package youtube
 
-type ytSearchResponse struct {
+type YtSearchResponse struct {
 	Items []ytSearchItem `json:"items"`
 	PageInfo PageInfo `json:"pageInfo"`
 }

@@ -1,6 +1,6 @@
-package main
+package youtube
 
-type ytListResponse struct {
+type YtListResponse struct {
 	Items []ytLisItem `json:"items"`
 }
 

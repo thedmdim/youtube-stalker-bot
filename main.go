@@ -1,22 +1,18 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
+	"errors"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"log"
-	"math/rand"
-	"net/http"
 	"os"
-	"strconv"
 	"time"
+	"youtube-stalker-bot/stats"
+	"youtube-stalker-bot/telegram"
+	"youtube-stalker-bot/youtube"
 )
 
-var requestMaxTries int = 10
-var requestDelayOnFail int = 5
-var views int = 200
+
+const MaxViews int = 200
 
 const gCloadApiUrl string = "https://www.googleapis.com/youtube/v3"
 var gCloadApiToken string = os.Getenv("GCLOUD_TOKEN")
@@ -24,256 +20,64 @@ var gCloadApiToken string = os.Getenv("GCLOUD_TOKEN")
 const tgBotApiUrl string = "https://api.telegram.org/bot"
 var tgBotApiToken string = os.Getenv("TGBOT_TOKEN")
 
+var ss *stats.Storage = stats.NewStorage()
+var yt *youtube.Client = youtube.NewClient(gCloadApiUrl, gCloadApiToken, ss, 200)
+var tg *telegram.Client = telegram.NewClient(tgBotApiUrl, tgBotApiToken)
+
 func main(){
-	var offset int
+	//http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+
 	if gCloadApiToken == "" || tgBotApiToken == "" {
 		log.Fatalf("Set GCLOUD_TOKEN and TGBOT_TOKEN env variables")
 	}
+	
 	for ;; {
-		updates, err := getTelegramUpdates(offset)
+		updates, err := tg.Updates()
+
 		if err != nil {
 			log.Println(err)
 		}
 		for _, update := range updates {
-			go processUpdate(update)
-			offset = update.UpdateId + 1
+			go processUpdate(&update)
+			tg.Offset = update.UpdateId + 1
 		}
 	}
 }
 
-func processUpdate(update Update){
-	message := BotMessage{}
+
+func processUpdate(update *telegram.Update){
+	message := telegram.BotMessage{}
 	message.ChatId = update.Message.Chat.ChatId
+	
 	if update.Message.Text == "/start" {
 		message.Text = "Чтобы получить случайные видео, нажми /random"
-		botReply(message)
 	}
 
 	if update.Message.Text == "/random" {
-		message.Text = "Начинаю рандомить 🎲"
-		botReply(message)
-
-		videos, err := findRandomVideos()
-		if err != nil {
+		ss.Today().Clicks+=1
+		video, err := yt.TakeFromQueue()
+	
+		if errors.Is(err, youtube.ErrorApiQuota) {
 			message.Text = "У меня кончились запросы к ютуб апи, попробуй попозже 😴"
-			botReply(message)
-			return
 		}
-		message.Text = fmt.Sprintf("Найдено %d самых случайных видео", len(videos))
-		botReply(message)
-		time.Sleep(time.Second * 2)
-		
-		for _, v := range videos {
-			message = BotMessage{
-				ChatId: update.Message.Chat.ChatId,
-				Text: fmt.Sprintf("title: %s\nviews: %d\nlink: https://www.youtube.com/watch?v=%s", v.Title, v.Views, v.Id),
-			}
-			botReply(message)
-			time.Sleep(time.Second)
-		}
-	}
-}
-
-func findRandomVideos() (map[string]*Video, error) {
-	var (
-		id string
-		err error
-	)
-	results := make(map[string]*Video)
-
-	for try:=1;;try++{
-		id = randomYtId()
-
-		log.Printf("Search id %s with CSE", id)
-
-		err = searchId(results, id)
-		if err != nil {
-			return nil, err
-		}
-		
-		log.Printf("Found %d videos", len(results))
-		if len(results) == 0 {
-			continue
-		}
-
-		log.Printf("Populating views")
-		err = getViews(results)
-		if err != nil {
-			return nil, err
-		}
-
-		log.Printf("Filter videos with less than %d views", views)
-		for k, v := range results {
-			if v.Views > views {
-				delete(results, k)
-			}
-		}
-		
-		log.Printf("Videos after filtering %d", len(results))
-		if len(results) > 0 {
-			return results, nil
-		}	
-	}
-}
-
-// get random youtube video id
-func randomYtId() string {
-	const ytbase64range string = "0123456789abcdefghijklmnopqrstuvwxyz-_"
-	var id string		
-	
-	rand.Seed(time.Now().UnixNano())	
-	for i:=0; i<5; i++ {
-		id+=string(ytbase64range[rand.Intn(37)])
-	}
-
-	log.Printf("Randomly generated id part %s", id)
-	return id
-}
-
-func searchId(results map[string]*Video, id string) error {
-	var endpoint string = "/search"
-	var params string = "?part=snippet&maxResults=50&type=video&key=" + gCloadApiToken + "&q=inurl%3A" + id
-	resp, err := getRequest(gCloadApiUrl + endpoint + params)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	var r ytSearchResponse
-	err = json.Unmarshal(body, &r)
-	if err != nil {
-		return err
-	}
-	log.Printf("Found %d results", r.PageInfo.TotalResults)
-
-	for _, item := range r.Items {
-		video := new(Video)
-		
-		video.Id = item.Id.VideoId
-		video.UploadDate = item.Snippet.PublishedAt
-		video.Title = item.Snippet.Title
-
-		results[video.Id] = video
-	}
-	return nil
-}
-
-
-func getViews(videos map[string]*Video) error {
-	var ids string
-	
-	for _, video := range videos {
-		ids += video.Id + ","
-	}
-
-	var endpoint string = "/videos"
-	var params string = "?part=statistics&key=" + gCloadApiToken + "&id=" + ids 
-	resp, err := getRequest(gCloadApiUrl + endpoint + params)
-	if err != nil {
-		log.Printf("getViews: %e", err)
-		return err
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	var r ytListResponse
-	err = json.Unmarshal(body, &r)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-
-	for _, item := range r.Items {
-		viewCount, err := strconv.Atoi(item.Statistics.ViewCount)
 		if err != nil {
 			log.Println(err)
-			return err
 		}
-		videos[item.Id].Views = viewCount
-	}
-	return nil
-}
 
-func getTelegramUpdates (offset int) ([]Update, error) {
-	var endpoint string = "/getUpdates" + fmt.Sprintf("?offset=%d", offset)
-	resp, err := getRequest(tgBotApiUrl + tgBotApiToken + endpoint)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
+		message.Text = fmt.Sprintf("Title: %s\nViews: %d\nLink: https://www.youtube.com/watch?v=%s", video.Title, video.Views, video.Id)
 	}
 
-	var tgBotApiResponseJson TgBotApiResponse
-	err = json.Unmarshal(body, &tgBotApiResponseJson)
+	if update.Message.Text == "/stats" {
+		day := time.Now().Day()
+		clicks := fmt.Sprintf("Нажали /random\n- Позавчера: %d\n- Вчера: %d\n- Сегодня: %d\n\n", 
+			ss.Days[day-2].Clicks, ss.Days[day-1].Clicks, ss.Days[day].Clicks)
 
-	if err != nil {
-		return nil, err
+		queries := fmt.Sprintf("Запросов к YouTube API\n- Позавчера: %d\n- Вчера: %d\n- Сегодня: %d\n\n", 
+			ss.Days[day-2].ApiQueries, ss.Days[day-1].ApiQueries, ss.Days[day].ApiQueries)
+
+		inqueue := fmt.Sprintf("Видео в очереди: %d", len(yt.VideoQueue))
+
+		message.Text = clicks + queries + inqueue
 	}
-	return tgBotApiResponseJson.Result, nil
-}
-
-func botReply(message BotMessage) error {
-	log.Println("Telegram BOT reply")
-	var endpoint string = "/sendMessage"
-	jsonValue, _ := json.Marshal(message)
-
-	err := postRequest(tgBotApiUrl + tgBotApiToken + endpoint, bytes.NewBuffer(jsonValue))
-	if err != nil {
-		return err
-	}
-	return nil
-	
-}
-
-func getRequest(url string) (*http.Response, error) {
-	var (
-		resp *http.Response
-		err error
-	)
-	for i:=0; i<requestMaxTries; i++ {
-		resp, err = http.Get(url)
-		if resp.StatusCode != 200 {
-			err = fmt.Errorf("POST %s %d", url, resp.StatusCode)
-		}
-		if err != nil {
-			log.Printf("Error occured: %s, try: %d", err, i)
-			time.Sleep(time.Second * 10)
-			continue
-		}
-		return resp, nil
-	}
-	return nil, err
-}
-
-func postRequest(url string, body io.Reader) error {
-	var (
-		resp *http.Response
-		err error
-	)
-	for i:=0; i<requestMaxTries; i++ {
-		resp, err = http.Post(url, "application/json", body)
-		if resp.StatusCode != 200 {
-			err = fmt.Errorf("POST %s %d", url, resp.StatusCode)
-		}
-		if err != nil {
-			log.Printf("Error occured: %s, try: %d", err, i)
-			time.Sleep(time.Second * time.Duration(requestDelayOnFail))
-			continue
-		}
-		return nil
-	}
-	return err
+	tg.SendMessage(message)
 }
