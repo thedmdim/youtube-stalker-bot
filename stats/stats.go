@@ -2,33 +2,42 @@ package stats
 
 import "time"
 
+const DateFormat string = "2006/01/02"
+
 type Storage struct {
-	Days map[int]*Stat
+	Days map[string]*Stat
 }
 
 func NewStorage() *Storage {
-	day := time.Now().Day()
-	storage := make(map[int]*Stat)
-	for i:=0; i<4; i++ { 
-		storage[day]=new(Stat)
-		day-=1
+	today := time.Now()
+	days := make(map[string]*Stat)
+	for i:=0; i>-3; i-- {
+		days[today.AddDate(0,0,i).Format(DateFormat)] = new(Stat)
 	}
-	return &Storage{
-		Days: storage,
-	}
+	return &Storage{days}
 }
 
 func (s *Storage) Today() *Stat {
-	day := time.Now().Day()
-	if stat, ok := s.Days[day]; ok {
+	today := time.Now()
+	if stat, ok := s.Days[today.Format(DateFormat)]; ok {
 		return stat
 	} else {
-		delete(s.Days, day-3)
 		stat := new(Stat)
-		s.Days[day] = stat
+		s.Days[today.Format(DateFormat)] = stat
+
+		daym0 := today.Format(DateFormat)
+		daym1 := today.AddDate(0,0,-1).Format(DateFormat)
+		daym2 := today.AddDate(0,0,-2).Format(DateFormat)
+
+		for k := range s.Days {
+			if k!=daym2 || k!=daym1 || k!=daym0 {
+				delete(s.Days, k)
+			}
+		}
 		return stat
 	}
 }
+
 
 type Stat struct {
 	Clicks     int

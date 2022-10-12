@@ -71,12 +71,17 @@ func processUpdate(update *telegram.Update){
 	}
 
 	if update.Message.Text == "/stats" {
-		day := time.Now().Day()
+		today := time.Now()
+
+		daym0 := today.Format(stats.DateFormat)
+		daym1 := today.AddDate(0,0,-1).Format(stats.DateFormat)
+		daym2 := today.AddDate(0,0,-2).Format(stats.DateFormat)
+
 		clicks := fmt.Sprintf("Нажали /random\n- Позавчера: %d\n- Вчера: %d\n- Сегодня: %d\n\n", 
-			ss.Days[day-2].Clicks, ss.Days[day-1].Clicks, ss.Days[day].Clicks)
+			ss.Days[daym2].Clicks, ss.Days[daym1].Clicks, ss.Days[daym0].Clicks)
 
 		queries := fmt.Sprintf("Запросов к YouTube API\n- Позавчера: %d\n- Вчера: %d\n- Сегодня: %d\n\n", 
-			ss.Days[day-2].ApiQueries, ss.Days[day-1].ApiQueries, ss.Days[day].ApiQueries)
+			ss.Days[daym2].ApiQueries, ss.Days[daym1].ApiQueries, ss.Days[daym0].ApiQueries)
 
 		inqueue := fmt.Sprintf("Видео в очереди: %d", len(yt.VideoQueue))
 
