@@ -8,7 +8,11 @@ type Storage struct {
 
 func NewStorage() *Storage {
 	s := new(Storage)
-	s.Days = make([]*Stat, 3)
+
+	for i:=0;i<3;i++{
+		s.Days = append(s.Days, new(Stat))
+	}
+	
 	s.Ticker()
 	return s
 }
