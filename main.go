@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"time"
 	"youtube-stalker-bot/stats"
 	"youtube-stalker-bot/telegram"
 	"youtube-stalker-bot/youtube"
@@ -34,6 +33,7 @@ func main(){
 		log.Fatalf("Set GCLOUD_TOKEN and TGBOT_TOKEN env variables")
 	}
 	
+	// event loop
 	for ;; {
 		updates, err := tg.Updates()
 
@@ -57,7 +57,7 @@ func processUpdate(update *telegram.Update){
 	}
 
 	if update.Message.Text == "/random" {
-		ss.Today().Clicks+=1
+		ss.Days[0].Clicks+=1
 		video, err := yt.TakeFromQueue()
 	
 		if errors.Is(err, youtube.ErrorApiQuota) {
@@ -71,17 +71,12 @@ func processUpdate(update *telegram.Update){
 	}
 
 	if update.Message.Text == "/stats" {
-		today := time.Now()
-
-		daym0 := today.Format(stats.DateFormat)
-		daym1 := today.AddDate(0,0,-1).Format(stats.DateFormat)
-		daym2 := today.AddDate(0,0,-2).Format(stats.DateFormat)
 
 		clicks := fmt.Sprintf("Нажали /random\n- Позавчера: %d\n- Вчера: %d\n- Сегодня: %d\n\n", 
-			ss.Days[daym2].Clicks, ss.Days[daym1].Clicks, ss.Days[daym0].Clicks)
+			ss.Days[2].Clicks, ss.Days[1].Clicks, ss.Days[0].Clicks)
 
 		queries := fmt.Sprintf("Запросов к YouTube API\n- Позавчера: %d\n- Вчера: %d\n- Сегодня: %d\n\n", 
-			ss.Days[daym2].ApiQueries, ss.Days[daym1].ApiQueries, ss.Days[daym0].ApiQueries)
+			ss.Days[2].ApiQueries, ss.Days[1].ApiQueries, ss.Days[0].ApiQueries)
 
 		inqueue := fmt.Sprintf("Видео в очереди: %d", len(yt.VideoQueue))
 
