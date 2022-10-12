@@ -3,31 +3,29 @@ package stats
 import "time"
 
 type Storage struct {
-	Days map[int]*Stat
+	Days []*Stat
 }
 
 func NewStorage() *Storage {
-	day := time.Now().Day()
-	storage := make(map[int]*Stat)
-	for i:=0; i<4; i++ { 
-		storage[day]=new(Stat)
-		day-=1
+	s := new(Storage)
+
+	for i:=0;i<3;i++{
+		s.Days = append(s.Days, new(Stat))
 	}
-	return &Storage{
-		Days: storage,
-	}
+	
+	s.Ticker()
+	return s
 }
 
-func (s *Storage) Today() *Stat {
-	day := time.Now().Day()
-	if stat, ok := s.Days[day]; ok {
-		return stat
-	} else {
-		delete(s.Days, day-3)
-		stat := new(Stat)
-		s.Days[day] = stat
-		return stat
-	}
+func (s *Storage) Ticker() {
+	go func() {
+		for {
+			if h := time.Now().Hour(); h == 0 {
+				// add new at the beggining and delete last item
+				s.Days = append([]*Stat{new(Stat)}, s.Days[:len(s.Days)-1]...)
+			}
+		}
+	}()
 }
 
 type Stat struct {

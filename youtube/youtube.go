@@ -149,7 +149,7 @@ func (c *Client) searchId(results map[string]*Video) error {
 		results[video.Id] = video
 	}
 
-	c.SS.Today().ApiQueries+=1
+	c.SS.Days[0].ApiQueries+=1
 	return nil
 }
 
@@ -195,7 +195,7 @@ func (c *Client) getViews(videos map[string]*Video) error {
 	
 	}
 
-	c.SS.Today().ApiQueries+=1
+	c.SS.Days[0].ApiQueries+=1
 	return nil
 }
 
