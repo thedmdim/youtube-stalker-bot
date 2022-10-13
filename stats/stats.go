@@ -23,6 +23,7 @@ func (s *Storage) Ticker() {
 			if h := time.Now().Hour(); h == 0 {
 				// add new at the beggining and delete last item
 				s.Days = append([]*Stat{new(Stat)}, s.Days[:len(s.Days)-1]...)
+				time.Sleep(time.Hour * 24)
 			}
 		}
 	}()
