@@ -190,7 +190,6 @@ func (c *Client) getViews(videos map[string]*Video) error {
 		if err == nil {
 			videos[item.Id].Views = viewCount
 		}
-	
 	}
 
 	c.SS.Days[0].ApiQueries+=1
