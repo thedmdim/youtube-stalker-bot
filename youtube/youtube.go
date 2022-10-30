@@ -188,7 +188,7 @@ func (c *Client) getViews(videos map[string]*Video) error {
 
 		viewCount, err := strconv.Atoi(item.Statistics.ViewCount)
 		if err != nil {
-			return err
+			viewCount = 0
 		}
 
 		videos[item.Id].Views = viewCount
