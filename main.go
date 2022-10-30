@@ -45,6 +45,11 @@ func main(){
 
 
 func processUpdate(update *telegram.Update){
+	
+	if update == nil {
+		return
+	}
+
 	message := telegram.BotMessage{}
 	message.ChatId = update.Message.Chat.ChatId
 	
