@@ -4,7 +4,7 @@
 
 <img alt="Роутер в качестве сервера для бота" src="myserver.jpg" height="300">
 
-## компиляция
+## Компиляция
 1. `env GOOS=linux GOARCH=mips GOMIPS=softfloat  go build -trimpath -ldflags="-s -w" .`
 2. `upx -9 youtube-stalker-bot`
 
