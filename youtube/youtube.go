@@ -36,7 +36,7 @@ func request(url string) (*http.Response, error) {
 type Client struct {
 	BaseURL string
 	ApiKey     string
-	sync.Mutex
+	sync.RWMutex
 	SS *stats.Storage
 	VideoQueue map[string]*Video
 	MaxViews int
@@ -62,6 +62,7 @@ func (c *Client) PutInQueue(id string, video *Video){
 func (c *Client) TakeFromQueue() (*Video, error) {
 	// check if queue is empty
 	// and find new videos if it is
+	c.RLock()
 	for ; len(c.VideoQueue) == 0; {
 		// 
 		results, err := c.findVideos()
@@ -76,8 +77,9 @@ func (c *Client) TakeFromQueue() (*Video, error) {
 	// pop video from queue
 	var RandomVideo *Video 
 	for k, v := range c.VideoQueue {
-		c.Lock()
 		RandomVideo = v
+		c.RUnlock()
+		c.Lock()
 		delete(c.VideoQueue, k)
 		c.Unlock()
 		break
