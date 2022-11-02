@@ -8,9 +8,10 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
-	"net/url"	
+	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"youtube-stalker-bot/stats"
 )
@@ -35,6 +36,7 @@ func request(url string) (*http.Response, error) {
 type Client struct {
 	BaseURL string
 	ApiKey     string
+	sync.RWMutex
 	SS *stats.Storage
 	VideoQueue map[string]*Video
 	MaxViews int
@@ -50,39 +52,56 @@ func NewClient(BaseURL string, ApiKey string, StatsStorage *stats.Storage, MaxVi
 	}
 }
 
+func (c *Client) PutInQueue(id string, video *Video){
+	c.Lock()
+	c.VideoQueue[id] = video
+	c.Unlock()
+}
+
 
 func (c *Client) TakeFromQueue() (*Video, error) {
+	// check if queue is empty
+	// and find new videos if it is
+	c.RLock()
 	for ; len(c.VideoQueue) == 0; {
-		err := c.findVideos()
+		// 
+		results, err := c.findVideos()
 		if err != nil {
 			return nil, err
 		}
+		for id, video := range results {
+			c.PutInQueue(id, video)
+		}
 	}
 
+	// pop video from queue
 	var RandomVideo *Video 
 	for k, v := range c.VideoQueue {
 		RandomVideo = v
+		c.RUnlock()
+		c.Lock()
 		delete(c.VideoQueue, k)
+		c.Unlock()
 		break
 	}
 	return RandomVideo, nil
 }
 
-func (c *Client) findVideos() error{
+func (c *Client) findVideos() (map[string]*Video, error) {
 	var err error
 	results := make(map[string]*Video)
 
 	for {
 		err = c.searchId(results)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if len(results)==0{
 			continue
 		}
 		err = c.getViews(results)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		
 		if len(results)==0 {
@@ -92,10 +111,7 @@ func (c *Client) findVideos() error{
 		if len(results)==0 {
 			continue
 		}
-		for k, v := range results {
-			c.VideoQueue[k] = v
-		}
-		return nil
+		return results, nil
 	}
 }
 
@@ -149,7 +165,7 @@ func (c *Client) searchId(results map[string]*Video) error {
 		results[video.Id] = video
 	}
 
-	c.SS.Days[0].ApiQueries+=1
+	c.SS.IncreaseTodaysQueries()
 	return nil
 }
 
@@ -192,7 +208,7 @@ func (c *Client) getViews(videos map[string]*Video) error {
 		}
 	}
 
-	c.SS.Days[0].ApiQueries+=1
+	c.SS.IncreaseTodaysQueries()
 	return nil
 }
 

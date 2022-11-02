@@ -49,7 +49,7 @@ func main(){
 
 
 func processUpdate(update *telegram.Update){
-
+	
 	if update == nil {
 		return
 	}
@@ -62,7 +62,8 @@ func processUpdate(update *telegram.Update){
 	}
 
 	if update.Message.Text == "/random" {
-		ss.Days[0].Clicks+=1
+		ss.IncreaseTodaysClicks()
+
 		video, err := yt.TakeFromQueue()
 	
 		if errors.Is(err, youtube.ErrorApiQuota) {
