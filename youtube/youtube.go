@@ -52,38 +52,30 @@ func NewClient(BaseURL string, ApiKey string, StatsStorage *stats.Storage, MaxVi
 	}
 }
 
-func (c *Client) PutInQueue(id string, video *Video){
-	c.Lock()
-	c.VideoQueue[id] = video
-	c.Unlock()
-}
-
-
 func (c *Client) TakeFromQueue() (*Video, error) {
 	// check if queue is empty
 	// and find new videos if it is
-	c.RLock()
-	for ; len(c.VideoQueue) == 0; {
-		// 
+	c.Lock()
+
+	for len(c.VideoQueue) == 0 {
 		results, err := c.findVideos()
 		if err != nil {
 			return nil, err
 		}
 		for id, video := range results {
-			c.PutInQueue(id, video)
-		}
+			c.VideoQueue[id] = video
+		}	
 	}
 
 	// pop video from queue
-	var RandomVideo *Video 
+	var RandomVideo *Video
 	for k, v := range c.VideoQueue {
 		RandomVideo = v
-		c.RUnlock()
-		c.Lock()
 		delete(c.VideoQueue, k)
-		c.Unlock()
 		break
 	}
+	
+	c.Unlock()
 	return RandomVideo, nil
 }
 
