@@ -1,16 +1,14 @@
 package main
 
 import (
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"youtube-stalker-bot/stats"
 	"youtube-stalker-bot/telegram"
 	"youtube-stalker-bot/youtube"
-	"youtube-stalker-bot/led"
+
 )
 
 
@@ -27,7 +25,6 @@ var yt *youtube.Client = youtube.NewClient(gCloadApiUrl, gCloadApiToken, ss, 200
 var tg *telegram.Client = telegram.NewClient(tgBotApiUrl, tgBotApiToken)
 
 func main(){
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
 	if gCloadApiToken == "" || tgBotApiToken == "" {
 		log.Fatalf("Set GCLOUD_TOKEN and TGBOT_TOKEN env variables")
@@ -88,7 +85,5 @@ func processUpdate(update *telegram.Update){
 
 		message.Text = clicks + queries + inqueue
 	}
-	led.LedSwitch("default-on")
-	tg.SendMessage(message)
-	led.LedSwitch("none")
+
 }
