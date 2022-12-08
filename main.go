@@ -73,7 +73,7 @@ func processUpdate(update *telegram.Update){
 			log.Println(err)
 		}
 
-		message.Text = fmt.Sprintf("Title: %s\nViews: %d\nLink: https://www.youtube.com/watch?v=%s", video.Title, video.Views, video.Id)
+		message.Text = fmt.Sprintf("Title: %s\nViews: %d\nPublished: %s\nLink: https://www.youtube.com/watch?v=%s", video.Title, video.Views, video.UploadDate, video.Id)
 	}
 
 	if update.Message.Text == "/stats" {
