@@ -1,10 +1,12 @@
 package main
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"strings"
 	"youtube-stalker-bot/stats"
@@ -32,6 +34,7 @@ var yt *youtube.Client = youtube.NewClient(gCloadApiUrl, gCloadApiToken, ss, 200
 var tg *telegram.Client = telegram.NewClient(tgBotApiUrl, tgBotApiToken)
 
 func main(){
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
 	if gCloadApiToken == "" || tgBotApiToken == "" || tgChannelId == "" {
 		log.Fatalln("Set GCLOUD_TOKEN, TGBOT_TOKEN and TG_CHANNEL env variables")
@@ -113,7 +116,7 @@ func processUpdate(result *telegram.Result){
 	if strings.HasPrefix(result.Message.Text, "/post") {
 		if reply := result.Message.ReplyToMessage; reply != nil {
 			if reply.From.Username == tgBotUsername {
-				tg.SendMessage(telegram.BotMessage{
+				tg.SendMessageBlink(telegram.BotMessage{
 					ChatId: json.Number(tgChannelId),
 					Text: strings.Replace(result.Message.Text, "/post", "", 1) + "\n\n" + result.Message.ReplyToMessage.Text,
 				})
@@ -125,5 +128,5 @@ func processUpdate(result *telegram.Result){
 			message.Text = "Напишите /post в ответ на сообщение, которое вы хотите запостить"
 		}
 	}
-	tg.SendMessage(message)
+	tg.SendMessageBlink(message)
 }

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+
+	"youtube-stalker-bot/led"
 )
 
 type Client struct {
@@ -89,4 +91,10 @@ func (c *Client) SendMessage(message BotMessage) error {
 		return err
 	}
 	return nil
+}
+
+func (c *Client) SendMessageBlink(message BotMessage) error {
+	led.LedSwitch("default-on")
+	defer led.LedSwitch("none")
+	return c.SendMessage(message)
 }
