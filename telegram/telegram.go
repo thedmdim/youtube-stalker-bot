@@ -21,7 +21,7 @@ func NewClient(BaseURL string, ApiKey string) *Client {
 	}
 }
 
-func (c *Client) Updates() ([]Update, error) {
+func (c *Client) Updates() ([]Result, error) {
 
 	endpoint := "/getUpdates"
 
@@ -38,13 +38,44 @@ func (c *Client) Updates() ([]Update, error) {
 		return nil, err
 	}
 
-	var r TgBotApiResponse
+	var r Updates
 	err = json.Unmarshal(body, &r)
 
 	if err != nil {
 		return nil, err
 	}
-	return r.Result, nil
+	return r.Results, nil
+}
+
+func (c *Client) getUser(endpoint string, param string) (*User, error) {
+
+	resp, err := http.Get(c.BaseURL + c.ApiKey + endpoint + param)
+
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var r GetUser
+	err = json.Unmarshal(body, &r)
+
+	if err != nil {
+		return nil, err
+	}
+	return &r.Result, nil
+}
+
+func (c *Client) GetMe() (*User, error) {
+	return c.getUser("/getMe", "")
+}
+
+func (c *Client) GetChat(chatId string) (*User, error) {
+	return c.getUser("/getChat", fmt.Sprintf("?chat_id=%s", chatId))
 }
 
 func (c *Client) SendMessage(message BotMessage) error {

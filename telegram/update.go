@@ -1,24 +1,33 @@
 package telegram
 
-type TgBotApiResponse struct {
-	Result []Update `json:"result"`
+import "encoding/json"
+
+type Updates struct {
+	Results []Result `json:"result"`
 }
 
-type Update struct {
-	UpdateId int `json:"update_id"`
-	Message Message `json:"message"`
+type Result struct {
+	UpdateId int     `json:"update_id"`
+	Message  Message `json:"message"`
 }
 
 type Message struct {
-	Chat Chat `json:"chat"`
-	Text string `json:"text"`
+	From           From     `json:"from"`
+	Chat           Chat     `json:"chat"`
+	Text           string   `json:"text"`
+	ReplyToMessage *Message `json:"reply_to_message"`
 }
 
 type Chat struct {
-	ChatId int64 `json:"id"`
+	ChatId json.Number `json:"id"`
+}
+
+type From struct {
+	Username string `json:"username"`
 }
 
 type BotMessage struct {
-	ChatId int64 `json:"chat_id"`
-	Text string `json:"text"`
+	// BotMessage представляет собой сообщение которым отвечает бот
+	ChatId json.Number `json:"chat_id"`
+	Text   string      `json:"text"`
 }
