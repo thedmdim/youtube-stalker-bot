@@ -85,5 +85,5 @@ func processUpdate(update *telegram.Update){
 
 		message.Text = clicks + queries + inqueue
 	}
-
+	tg.SendMessage(message)
 }
