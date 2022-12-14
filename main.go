@@ -97,7 +97,7 @@ func processUpdate(result *telegram.Result){
 		parts := strings.Split(strings.Split(video.UploadDate, "T")[0], "-")
 		date := fmt.Sprintf("%s.%s.%s", parts[2], parts[1], parts[0])
 
-		message.Text = fmt.Sprintf("Title: %s\nViews: %d\nPublished: %s\nLink: https://www.youtube.com/watch?v=%s", video.Title, video.Views, date, video.Id)
+		message.Text = fmt.Sprintf("Title: %s\nViews: %d\nPublished: %s\n\nhttps://www.youtube.com/watch?v=%s", video.Title, video.Views, date, video.Id)
 	}
 
 	if result.Message.Text == "/stats" {
