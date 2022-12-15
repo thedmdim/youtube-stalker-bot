@@ -102,11 +102,12 @@ func processUpdate(result *telegram.Result){
 	}
 
 	if strings.HasPrefix(result.Message.Text, "/post") {
-		if result.Message.Text != "/post" {
+		reply := result.Message.ReplyToMessage
+		if result.Message.Text != "/post" || reply != nil {
 			post := telegram.OutgoingMessage{}
 			post.ChatId = json.Number(tgChannelId)
-			post.Text = strings.Replace(result.Message.Text, "/post", "", 1)
-			if reply := result.Message.ReplyToMessage; reply != nil {
+			post.Text = "from @" + result.Message.From.Username + strings.Replace(result.Message.Text, "/post", "", 1)
+			if reply != nil {
 				post.Text = post.Text + "\n\n" + reply.Text
 			}
 			tg.SendMessageBlink(post)
