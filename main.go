@@ -106,10 +106,13 @@ func processUpdate(result *telegram.Result){
 		if result.Message.Text != "/post" || reply != nil {
 			post := telegram.OutgoingMessage{}
 			post.ChatId = json.Number(tgChannelId)
-			post.Text = "from @" + result.Message.From.Username + strings.Replace(result.Message.Text, "/post", "", 1)
-			if reply != nil {
-				post.Text = post.Text + "\n\n" + reply.Text
+			if text := strings.Replace(result.Message.Text, "/post", "", 1); text != "" {
+				post.Text += "\n\n" + text
 			}
+			if reply := result.Message.ReplyToMessage; reply != nil {
+				post.Text += "\n\n" + reply.Text
+			}
+			post.Text += "\n\n@" + result.Message.From.Username
 			tg.SendMessageBlink(post)
 			message.Text = "Отправлено в предложку!"
 		} else {
