@@ -39,18 +39,6 @@ func main(){
 	if gCloadApiToken == "" || tgBotApiToken == "" || tgChannelId == "" {
 		log.Fatalln("Set GCLOUD_TOKEN, TGBOT_TOKEN and TG_CHANNEL env variables")
 	}
-
-	me, err := tg.GetMe()
-	if err != nil {
-		log.Fatalln("Can't get bot username: ", err)
-	}
-	tgBotUsername = me.Username
-
-	chat, err := tg.GetChat(tgChannelId)
-	if err != nil {
-		log.Fatalln("Can't get bot username: ", err)
-	}
-	tgChannelUsername = chat.Username
 	
 	// event loop
 	for ;; {
@@ -73,7 +61,7 @@ func processUpdate(result *telegram.Result){
 		return
 	}
 
-	message := telegram.BotMessage{}
+	message := telegram.OutgoingMessage{}
 	message.ChatId = result.Message.Chat.ChatId
 
 	defer func() {
@@ -114,18 +102,17 @@ func processUpdate(result *telegram.Result){
 	}
 
 	if strings.HasPrefix(result.Message.Text, "/post") {
-		if reply := result.Message.ReplyToMessage; reply != nil {
-			if reply.From.Username == tgBotUsername {
-				tg.SendMessageBlink(telegram.BotMessage{
-					ChatId: json.Number(tgChannelId),
-					Text: strings.Replace(result.Message.Text, "/post", "", 1) + "\n\n" + result.Message.ReplyToMessage.Text,
-				})
-				message.Text = fmt.Sprintf("Успешно отправлено в @%s", tgChannelUsername)
-			} else {
-				message.Text = "Напишите /post в ответ на моё сообщение"
+		if result.Message.Text != "/post" {
+			post := telegram.OutgoingMessage{}
+			post.ChatId = json.Number(tgChannelId)
+			post.Text = strings.Replace(result.Message.Text, "/post", "", 1)
+			if reply := result.Message.ReplyToMessage; reply != nil {
+				post.Text = post.Text + "\n\n" + reply.Text
 			}
+			tg.SendMessageBlink(post)
+			message.Text = "Отправлено в предложку!"
 		} else {
-			message.Text = "Напишите /post в ответ на сообщение, которое вы хотите запостить"
+			message.Text = "Предложить пост:\n/post <текст>,\n/post в ответ на сообщение которое хотите прикрепить"
 		}
 	}
 	tg.SendMessageBlink(message)

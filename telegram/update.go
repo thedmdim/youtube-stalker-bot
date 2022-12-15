@@ -8,14 +8,14 @@ type Updates struct {
 
 type Result struct {
 	UpdateId int     `json:"update_id"`
-	Message  Message `json:"message"`
+	Message  IncomingMessage `json:"message"`
 }
 
-type Message struct {
+type IncomingMessage struct {
 	From           From     `json:"from"`
 	Chat           Chat     `json:"chat"`
 	Text           string   `json:"text"`
-	ReplyToMessage *Message `json:"reply_to_message"`
+	ReplyToMessage *IncomingMessage `json:"reply_to_message"`
 }
 
 type Chat struct {
@@ -26,7 +26,7 @@ type From struct {
 	Username string `json:"username"`
 }
 
-type BotMessage struct {
+type OutgoingMessage struct {
 	// BotMessage представляет собой сообщение которым отвечает бот
 	ChatId json.Number `json:"chat_id"`
 	Text   string      `json:"text"`
