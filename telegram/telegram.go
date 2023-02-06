@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+
+	"youtube-stalker-bot/led"
 )
 
 type Client struct {
@@ -21,7 +23,7 @@ func NewClient(BaseURL string, ApiKey string) *Client {
 	}
 }
 
-func (c *Client) Updates() ([]Update, error) {
+func (c *Client) Updates() ([]Result, error) {
 
 	endpoint := "/getUpdates"
 
@@ -38,16 +40,16 @@ func (c *Client) Updates() ([]Update, error) {
 		return nil, err
 	}
 
-	var r TgBotApiResponse
+	var r Updates
 	err = json.Unmarshal(body, &r)
 
 	if err != nil {
 		return nil, err
 	}
-	return r.Result, nil
+	return r.Results, nil
 }
 
-func (c *Client) SendMessage(message BotMessage) error {
+func (c *Client) SendMessage(message OutgoingMessage) error {
 	
 	endpoint := "/sendMessage"
 
@@ -58,4 +60,10 @@ func (c *Client) SendMessage(message BotMessage) error {
 		return err
 	}
 	return nil
+}
+
+func (c *Client) SendMessageBlink(message OutgoingMessage) error {
+	led.LedSwitch("default-on")
+	defer led.LedSwitch("none")
+	return c.SendMessage(message)
 }

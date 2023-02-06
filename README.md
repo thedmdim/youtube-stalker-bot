@@ -16,6 +16,3 @@ set GOARCH=mips
 set GOMIPS=softfloat
 go build -trimpath -ldflags="-s -w" .
 ```
-
-
-
