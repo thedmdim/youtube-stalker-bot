@@ -1,12 +1,10 @@
 package main
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"strings"
 	"youtube-stalker-bot/stats"
@@ -22,8 +20,6 @@ var gCloadApiToken string = os.Getenv("GCLOUD_TOKEN")
 
 const tgBotApiUrl string = "https://api.telegram.org/bot"
 var tgBotApiToken string = os.Getenv("TGBOT_TOKEN")
-var tgBotUsername string
-var tgChannelUsername string
 var tgChannelId string = os.Getenv("TG_CHANNEL")
 
 
@@ -32,7 +28,6 @@ var yt *youtube.Client = youtube.NewClient(gCloadApiUrl, gCloadApiToken, ss, 200
 var tg *telegram.Client = telegram.NewClient(tgBotApiUrl, tgBotApiToken)
 
 func main(){
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
 	if gCloadApiToken == "" || tgBotApiToken == "" || tgChannelId == "" {
 		log.Fatalln("Set GCLOUD_TOKEN, TGBOT_TOKEN and TG_CHANNEL env variables")
