@@ -4,11 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
+	"net/http"
 	"os"
+	"time"
 	"youtube-stalker-bot/stats"
 	"youtube-stalker-bot/telegram"
 	"youtube-stalker-bot/youtube"
-
 )
 
 
@@ -25,6 +27,15 @@ var yt *youtube.Client = youtube.NewClient(gCloadApiUrl, gCloadApiToken, ss, 200
 var tg *telegram.Client = telegram.NewClient(tgBotApiUrl, tgBotApiToken)
 
 func main(){
+
+	http.DefaultTransport = &http.Transport{
+		Dial: (&net.Dialer{
+				Timeout: 60 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).Dial,
+
+			TLSHandshakeTimeout: 60 * time.Second,
+	}
 
 	if gCloadApiToken == "" || tgBotApiToken == "" {
 		log.Fatalf("Set GCLOUD_TOKEN and TGBOT_TOKEN env variables")
