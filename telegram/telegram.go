@@ -21,7 +21,7 @@ func NewClient(BaseURL string, ApiKey string) *Client {
 	}
 }
 
-func (c *Client) Updates() ([]Update, error) {
+func (c *Client) Updates() ([]Result, error) {
 
 	endpoint := "/getUpdates"
 
@@ -38,16 +38,16 @@ func (c *Client) Updates() ([]Update, error) {
 		return nil, err
 	}
 
-	var r TgBotApiResponse
+	var r Updates
 	err = json.Unmarshal(body, &r)
 
 	if err != nil {
 		return nil, err
 	}
-	return r.Result, nil
+	return r.Results, nil
 }
 
-func (c *Client) SendMessage(message BotMessage) error {
+func (c *Client) SendMessage(message OutgoingMessage) error {
 	
 	endpoint := "/sendMessage"
 

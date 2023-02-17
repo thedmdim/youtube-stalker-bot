@@ -45,14 +45,14 @@ func main(){
 }
 
 
-func processUpdate(update *telegram.Update){
+func processUpdate(update *telegram.Result){
 	
 	if update == nil {
 		return
 	}
 
-	message := telegram.BotMessage{}
-	message.ChatId = update.Message.Chat.ChatId
+	message := telegram.OutgoingMessage{}
+	message.ChatId = update.Message.Chat.Id
 	
 	if update.Message.Text == "/start" {
 		message.Text = "Чтобы получить случайные видео, нажми /random"
